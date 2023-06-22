@@ -10,23 +10,11 @@ import android.util.Size;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
-/**
- * Used to record a video with view that can be captured. It also supports to switch views during recording.
- * This class extends {@link SurfaceMediaRecorder} and provides an extra API {@link #setRecordedView(View)}.
- *
- * <p>By default, capture is drawn in the center of canvas in scale if necessary.
- * It is easy to change drawing behavior with {@link #setVideoFrameDrawer(VideoFrameDrawer)}.
- *
- * <p>Main thread is set for drawing as capture is only available in this thread,
- * it's OK to move composing to a background thread with {@link #setWorkerLooper(Looper)},
- * in this case, a capture buffer for multi-thread may be required.
- *
- * Created by z4hyoung on 2017/11/8.
- */
 public class ViewRecorder extends SurfaceMediaRecorder {
 
-    private View mRecordedView;
+    private IBitmap mRecordedView;
 
     private Size mVideoSize;
 
@@ -41,7 +29,7 @@ public class ViewRecorder extends SurfaceMediaRecorder {
             if (bh > vh) {
                 scaleY = ((float) vh) / bh;
             }
-            scale = (scaleX < scaleY ? scaleX : scaleY);
+            scale = (Math.min(scaleX, scaleY));
             transX = (vw - bw * scale) / 2;
             transY = (vh - bh * scale) / 2;
 
@@ -53,8 +41,8 @@ public class ViewRecorder extends SurfaceMediaRecorder {
 
         @Override
         public void onDraw(Canvas canvas) {
-            mRecordedView.setDrawingCacheEnabled(true);
-            Bitmap bitmap = mRecordedView.getDrawingCache();
+//            mRecordedView.setDrawingCacheEnabled(true);
+            Bitmap bitmap = mRecordedView.getBitmap();
 
             int bitmapWidth = bitmap.getWidth();
             int bitmapHeight = bitmap.getHeight();
@@ -64,7 +52,7 @@ public class ViewRecorder extends SurfaceMediaRecorder {
             canvas.drawColor(Color.BLACK, PorterDuff.Mode.CLEAR);
             canvas.drawBitmap(bitmap, matrix, null);
 
-            mRecordedView.setDrawingCacheEnabled(false);
+//            mRecordedView.setDrawingCacheEnabled(false);
         }
     };
 
@@ -93,10 +81,15 @@ public class ViewRecorder extends SurfaceMediaRecorder {
     /**
      * Sets recorded view to be captured for video frame composition. Call this method before start().
      * You may change the recorded view with this method during recording.
-     *
-     * @param view the view to be captured
+     * <p>
+     * //     * @param view the view to be captured
      */
-    public void setRecordedView(@NonNull View view) throws IllegalStateException {
-        mRecordedView = view;
+    public void setRecordedView(@NonNull IBitmap iBitmap) throws IllegalStateException {
+        mRecordedView = iBitmap;
+    }
+
+    public interface IBitmap {
+        @Nullable
+        Bitmap getBitmap();
     }
 }

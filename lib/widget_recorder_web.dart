@@ -3,6 +3,7 @@
 // package as the core of your plugin.
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html show window;
+import 'dart:ui';
 
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
@@ -26,4 +27,9 @@ class WidgetRecorderWeb extends WidgetRecorderPlatform {
 
   @override
   Future<bool> startRecord(int videoWidth, int videoHeight) async => false;
+
+  @override
+  void setFunctionGetImage(Image? Function() getImage) {
+    // TODO: implement setFunctionGetImage
+  }
 }

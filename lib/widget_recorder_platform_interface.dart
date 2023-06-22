@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'widget_recorder_method_channel.dart';
@@ -26,5 +28,7 @@ abstract class WidgetRecorderPlatform extends PlatformInterface {
   Future<String?> getPlatformVersion() {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
+
   Future<bool> startRecord(int videoWidth, int videoHeight);
+
 }

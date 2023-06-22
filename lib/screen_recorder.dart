@@ -7,13 +7,16 @@ import 'package:widget_recorder/widget_recorder.dart';
 
 class ScreenRecorderController {
   ScreenRecorderController({
-    this.pixelRatio = 0.5,
+    this.pixelRatio = 1,
     this.skipFramesBetweenCaptures = 2,
     SchedulerBinding? binding,
-  }) : _containerKey = GlobalKey();
+  })  : _containerKey = GlobalKey(),
+        _widgetRecorderPlugin = WidgetRecorder() {
+    _widgetRecorderPlugin.setImageCapture(capture);
+  }
 
   final GlobalKey _containerKey;
-  final _widgetRecorderPlugin = WidgetRecorder();
+  final WidgetRecorder _widgetRecorderPlugin;
 
   /// The pixelRatio describes the scale between the logical pixels and the size
   /// of the output image. Specifying 1.0 will give you a 1:1 mapping between
