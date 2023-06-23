@@ -29,6 +29,7 @@ abstract class WidgetRecorderPlatform extends PlatformInterface {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
 
-  Future<bool> startRecord(int videoWidth, int videoHeight);
+  Future<String?> startRecord(int videoWidth, int videoHeight, int frameRate);
 
+  Future<bool> stopRecord();
 }

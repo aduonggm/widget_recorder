@@ -26,10 +26,16 @@ class WidgetRecorderWeb extends WidgetRecorderPlatform {
   }
 
   @override
-  Future<bool> startRecord(int videoWidth, int videoHeight) async => false;
+  Future<String?> startRecord(int videoWidth, int videoHeight, int frameRate) async => null;
 
   @override
   void setFunctionGetImage(Image? Function() getImage) {
     // TODO: implement setFunctionGetImage
+  }
+
+  @override
+  Future<bool> stopRecord() {
+    // TODO: implement stopRecord
+    throw UnimplementedError();
   }
 }

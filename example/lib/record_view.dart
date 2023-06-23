@@ -31,7 +31,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   bool _recording = false;
   bool _exporting = false;
-  ScreenRecorderController controller = ScreenRecorderController(skipFramesBetweenCaptures: 0);
+  ScreenRecorderController controller = ScreenRecorderController();
 
   @override
   Widget build(BuildContext context) {

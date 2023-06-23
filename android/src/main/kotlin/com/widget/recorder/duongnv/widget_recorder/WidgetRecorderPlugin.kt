@@ -5,9 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.widget.recorder.duongnv.widget_recorder.recorder.ViewRecorder
 import com.widget.recorder.duongnv.widget_recorder.recorder.ViewRecorderDemoActivity
@@ -29,13 +28,13 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     private lateinit var activity: Activity
     private lateinit var channel: MethodChannel
     private lateinit var viewRecorder: ViewRecorderDemoActivity
+    private val imagesStack = arrayListOf<Bitmap>()
+    private val removeImage = arrayListOf<Bitmap>()
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         context = flutterPluginBinding.applicationContext
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "widget_recorder")
         channel.setMethodCallHandler(this)
-
-
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -43,6 +42,7 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         when (call.method) {
             "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
             "start_record" -> startRecord(result, call)
+            "stop_record" -> stopRecord(result)
             else -> throw Exception("not implement function   ${call.method}")
         }
     }
@@ -54,13 +54,14 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         (binding.lifecycle as HiddenLifecycleReference)
             .lifecycle
             .addObserver(LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> viewRecorder.onPause()
+                    Lifecycle.Event.ON_RESUME -> viewRecorder.onResume()
+                    Lifecycle.Event.ON_DESTROY -> viewRecorder.onDestroy()
+                    else -> {}
+                }
                 Log.e("Activity state: ", event.toString())
             })
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            getBitmap()
-        }, 2000)
-
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -74,10 +75,10 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     private fun startRecord(result: Result, call: MethodCall) {
         val width = call.argument<Int>("width") as Int
         val height = call.argument<Int>("height") as Int
-        println(" size view is   $width   $height")
-        result.success(true)
-        getBitmap()
-
+        val frameRate = call.argument<Int>("frame_rate") as Int
+        val enableRecordSoundFromMic = call.argument<Boolean>("frame_rate") ?: false
+        val filePath = viewRecorder.startRecord(width, height, frameRate, enableRecordSoundFromMic)
+        result.success(filePath)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
@@ -85,13 +86,47 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     }
 
     override fun getBitmap(): Bitmap? {
-        println("run to get bitma")
-        channel.invokeMethod("capture", null, object : MethodChannel.Result {
-            override fun success(result: Any?) {
+        takeCapture()
+        val image = if (imagesStack.isEmpty()) null
+        else if (imagesStack.size == 1) imagesStack.first()
+        else {
+            val first = imagesStack.first()
+            imagesStack.remove(first)
+            first
+        }
+        println("run to get bitma  ${imagesStack.size}")
+        image?.let {
+            removeImage.add(image)
+            if (removeImage.size >= 2) {
+                val bm = removeImage.first()
+                removeImage.remove(bm)
+                println("run to remove bm ${removeImage.size}")
+                bm.recycle()
+            }
+        }
+        return image
+    }
 
-                val imageData = result as ByteArray
-                val bmp = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
-                println("on success  get bitmap  $result")
+    private fun stopRecord(result: Result) {
+        viewRecorder.stopRecord()
+        removeImage.forEach {
+            it.recycle()
+        }
+        removeImage.clear()
+        result.success(true)
+    }
+
+    private fun takeCapture() {
+        val timeStart = System.currentTimeMillis()
+        channel.invokeMethod("capture", null, object : Result {
+            override fun success(result: Any?) {
+                val imageData = result as ByteArray?
+                imageData?.let {
+                    val bmp = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+                    imagesStack.add(bmp)
+                }
+
+                println("on success  get bitmap  ${System.currentTimeMillis() - timeStart}")
             }
 
             override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
@@ -104,7 +139,6 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             }
 
         })
-        return null
     }
 
 }

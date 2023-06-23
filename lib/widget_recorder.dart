@@ -9,11 +9,15 @@ class WidgetRecorder {
     return WidgetRecorderPlatform.instance.getPlatformVersion();
   }
 
-  Future<bool> startRecord(int width, int height) {
-    return WidgetRecorderPlatform.instance.startRecord(width, height);
+  Future<String?> startRecord(int width, int height, int frameRate) {
+    return WidgetRecorderPlatform.instance.startRecord(width, height, frameRate);
   }
 
   void setImageCapture(Image? Function() getImage) {
     (WidgetRecorderPlatform.instance as MethodChannelWidgetRecorder).set(getImage);
+  }
+
+  stopRecord() {
+    WidgetRecorderPlatform.instance.stopRecord();
   }
 }

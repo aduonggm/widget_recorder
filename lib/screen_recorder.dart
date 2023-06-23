@@ -8,7 +8,7 @@ import 'package:widget_recorder/widget_recorder.dart';
 class ScreenRecorderController {
   ScreenRecorderController({
     this.pixelRatio = 1,
-    this.skipFramesBetweenCaptures = 2,
+    this.frameRate = 30,
     SchedulerBinding? binding,
   })  : _containerKey = GlobalKey(),
         _widgetRecorderPlugin = WidgetRecorder() {
@@ -27,11 +27,7 @@ class ScreenRecorderController {
   /// for the underlying implementation.
   final double pixelRatio;
 
-  /// Describes how many frames are skipped between caputerd frames.
-  /// For example if it's `skipFramesBetweenCaptures = 2` screen_recorder
-  /// captures a frame, skips the next two frames and then captures the next
-  /// frame again.
-  final int skipFramesBetweenCaptures;
+  final int frameRate;
 
   int skipped = 0;
 
@@ -45,13 +41,15 @@ class ScreenRecorderController {
     final context = _containerKey.currentContext;
     if (context != null) {
       final size = MediaQuery.sizeOf(context);
-      final success = await _widgetRecorderPlugin.startRecord(size.width.toInt(), size.height.toInt());
+      final success = await _widgetRecorderPlugin.startRecord(size.width.toInt(), size.height.toInt(), frameRate);
       print("start record success  $success");
     }
     _record = true;
   }
 
-  void stop() {
+  void stop() async {
+    final success = await _widgetRecorderPlugin.stopRecord();
+
     _record = false;
   }
 
