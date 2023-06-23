@@ -5,18 +5,13 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'dart:convert';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:widget_recorder_example/main.dart';
 
 void main() {
   // final data = convertToTelex("Tôi là ai giữa cuộc đời này");
   // print("data is  ${json.encode(data)}");
   test('Converts Vietnamese string to Unikey Telex format', () {
-    String vietnameseString = "Tôi là ai giữa cuộc đời này";
+    String vietnameseString = "Tôi là ai giữa cuộc đời này. ";
     List<String> expectedTelexList =  ["t","o","o","i"," ","l","a","f"," ","a","i"," ","g","i","u","w","x","a"," ","c","u","o","o","j","c"," ","d","d","o","w","f","i"," ","n","a","f","y"];
 
     List<String> telexList = convertToTelex(vietnameseString);
@@ -53,6 +48,7 @@ List<String> convertToTelex(String vietnameseString) {
     if (telexChar != null) {
       if (telexChar.length > 1) {
         if (nextChar == '̣' || nextChar == '̉' || nextChar == '̃' || nextChar == '̣' || nextChar == '́') {
+          print('run to next char $nextChar');
           telexList.add(telexChar.substring(0, telexChar.length - 1) + nextChar);
           i++;
         } else {
