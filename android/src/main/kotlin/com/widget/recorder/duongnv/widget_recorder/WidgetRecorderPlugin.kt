@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -73,12 +75,21 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     override fun onReattachedToActivityForConfigChanges(p0: ActivityPluginBinding) {}
 
     private fun startRecord(result: Result, call: MethodCall) {
+        imagesStack.forEach {
+            it.recycle()
+        }
+        imagesStack.clear()
+
+        takeCapture()
         val width = call.argument<Int>("width") as Int
         val height = call.argument<Int>("height") as Int
         val frameRate = call.argument<Int>("frame_rate") as Int
-        val enableRecordSoundFromMic = call.argument<Boolean>("frame_rate") ?: false
-        val filePath = viewRecorder.startRecord(width, height, frameRate, enableRecordSoundFromMic)
-        result.success(filePath)
+        val enableRecordSoundFromMic = call.argument<Boolean>("enable_sound") ?: false
+        Handler(Looper.getMainLooper()).postDelayed({
+            val filePath =
+                viewRecorder.startRecord(width, height, frameRate, enableRecordSoundFromMic)
+            result.success(filePath)
+        }, 50)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
@@ -86,6 +97,8 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     }
 
     override fun getBitmap(): Bitmap? {
+        Log.d("duongnv", "success:  capture getbm  ${imagesStack.size}")
+
         takeCapture()
         val image = if (imagesStack.isEmpty()) null
         else if (imagesStack.size == 1) imagesStack.first()
@@ -97,7 +110,7 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         println("run to get bitma  ${imagesStack.size}")
         image?.let {
             removeImage.add(image)
-            if (removeImage.size >= 2) {
+            if (removeImage.size > 2 && imagesStack.size > 1) {
                 val bm = removeImage.first()
                 removeImage.remove(bm)
                 println("run to remove bm ${removeImage.size}")
@@ -123,6 +136,7 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 val imageData = result as ByteArray?
                 imageData?.let {
                     val bmp = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+                    Log.d("duongnv", "ç")
                     imagesStack.add(bmp)
                 }
 
@@ -130,12 +144,11 @@ class WidgetRecorderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             }
 
             override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                println("on success  get bitmap  error")
+                println("on success  get bitmap  error   $errorCode   $errorMessage  $errorDetails")
 
             }
 
             override fun notImplemented() {
-                TODO("Not yet implemented")
             }
 
         })

@@ -35,6 +35,7 @@ class ScreenRecorderController {
 
   void start() async {
     // only start a video, if no recording is in progress
+    capture();
     if (_record == true) {
       return;
     }
@@ -42,7 +43,7 @@ class ScreenRecorderController {
     if (context != null) {
       final size = MediaQuery.sizeOf(context);
       final success = await _widgetRecorderPlugin.startRecord(size.width.toInt(), size.height.toInt(), frameRate);
-      print("start record success  $success");
+
     }
     _record = true;
   }
@@ -54,11 +55,7 @@ class ScreenRecorderController {
   }
 
   ui.Image? capture() {
-    var startTime = DateTime.now().millisecondsSinceEpoch;
-    print("start capture   $startTime }");
     final renderObject = _containerKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-    print("start capture   ${DateTime.now().millisecondsSinceEpoch - startTime}");
-
     return renderObject.toImageSync(pixelRatio: pixelRatio);
   }
 }
@@ -68,8 +65,6 @@ class ScreenRecorder extends StatelessWidget {
     Key? key,
     required this.child,
     required this.controller,
-    required this.width,
-    required this.height,
     this.background = Colors.white,
   })  : assert(background.alpha == 255, 'background color is not allowed to be transparent'),
         super(key: key);
@@ -80,15 +75,7 @@ class ScreenRecorder extends StatelessWidget {
   /// This controller starts and stops the recording.
   final ScreenRecorderController controller;
 
-  /// Width of the recording.
-  /// This should not change during recording as it could lead to
-  /// undefined behavior.
-  final double width;
 
-  /// Height of the recording
-  /// This should not change during recording as it could lead to
-  /// undefined behavior.
-  final double height;
 
   /// The background color of the recording.
   /// Transparency is currently not supported.
@@ -99,8 +86,6 @@ class ScreenRecorder extends StatelessWidget {
     return RepaintBoundary(
       key: controller._containerKey,
       child: Container(
-        width: width,
-        height: height,
         color: background,
         alignment: Alignment.center,
         child: child,

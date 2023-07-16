@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.PorterDuff;
 import android.os.Looper;
+import android.util.Log;
 import android.util.Size;
 import android.view.View;
 
@@ -52,6 +53,7 @@ public class ViewRecorder extends SurfaceMediaRecorder {
             int videoHeight = mVideoSize.getHeight();
             Matrix matrix = getMatrix(bitmapWidth, bitmapHeight, videoWidth, videoHeight);
             canvas.drawColor(Color.BLACK, PorterDuff.Mode.CLEAR);
+            Log.d("duongnv", "onDraw:  bitmap is recycle"  + bitmap.isRecycled());
             canvas.drawBitmap(bitmap, matrix, null);
 //            bitmap.
 //            bitmap.recycle();

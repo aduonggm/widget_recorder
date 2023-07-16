@@ -56,27 +56,19 @@ public class ViewRecorderDemoActivity {
     public void onPause() {
         mMainHandler.removeCallbacks(mUpdateTextRunnable);
         if (mRecording) {
-            mMainHandler.post(() -> {
-                stopRecord();
-                updateRecordButtonText();
-            });
+            mMainHandler.post(this::stopRecord);
         }
     }
 
     public void onResume() {
         mMainHandler.post(mUpdateTextRunnable);
-        updateRecordButtonText();
     }
 
     public void onDestroy() {
         mWorkerHandler.getLooper().quit();
     }
 
-    private void updateRecordButtonText() {
-        mMainHandler.post(() -> {
 
-        });
-    }
 
     @Nullable
     public String startRecord(int videoWidth, int videoHeight, int frameRate, boolean enableRecordSoundFromMic) {
