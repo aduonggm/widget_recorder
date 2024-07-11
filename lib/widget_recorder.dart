@@ -1,6 +1,4 @@
-import 'dart:ui';
-
-import 'package:widget_recorder/widget_recorder_method_channel.dart';
+import 'dart:typed_data';
 
 import 'widget_recorder_platform_interface.dart';
 
@@ -13,11 +11,11 @@ class WidgetRecorder {
     return WidgetRecorderPlatform.instance.startRecord(width, height, frameRate);
   }
 
-  void setImageCapture(Image? Function() getImage) {
-    (WidgetRecorderPlatform.instance as MethodChannelWidgetRecorder).set(getImage);
+  void stopRecord() {
+    WidgetRecorderPlatform.instance.stopRecord();
   }
 
-  stopRecord() {
-    WidgetRecorderPlatform.instance.stopRecord();
+  void sendFrame(Uint8List imageData, int count) {
+    WidgetRecorderPlatform.instance.sendFrame(imageData, count);
   }
 }

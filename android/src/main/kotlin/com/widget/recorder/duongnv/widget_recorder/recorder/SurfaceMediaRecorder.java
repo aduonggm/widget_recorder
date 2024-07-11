@@ -1,10 +1,9 @@
 package com.widget.recorder.duongnv.widget_recorder.recorder;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.media.MediaRecorder;
-import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
@@ -18,11 +17,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link #setWorkerLooper(Looper)}
  * {@link #setVideoFrameDrawer(VideoFrameDrawer)}
  * </pre>
- *
+ * <p>
  * Also you can use it as same as {@link MediaRecorder} for other functions.
  *
  * <p> By the way, one more error type {@link #MEDIA_RECORDER_ERROR_SURFACE} is defined for surface error.
- *
+ * <p>
  * Created by z4hyoung on 2017/11/8.
  */
 
@@ -50,14 +49,6 @@ public class SurfaceMediaRecorder extends MediaRecorder {
     /**
      * Interface defined for user to customize video frame composition
      */
-    public interface VideoFrameDrawer {
-        /**
-         * Called when video frame is composing
-         *
-         * @param canvas the canvas on which content will be drawn
-         */
-        void onDraw(Canvas canvas);
-    }
 
     /**
      * default inter-frame gap
@@ -65,74 +56,63 @@ public class SurfaceMediaRecorder extends MediaRecorder {
     private static final long DEFAULT_INTERFRAME_GAP = 1000;
     private int mVideoSource;
     private OnErrorListener mOnErrorListener;
-    private long mInterframeGap = DEFAULT_INTERFRAME_GAP; // 1000 milliseconds as default
     private Surface mSurface;
     // if set, this class works same as MediaRecorder
     private Surface mInputSurface;
-    private Handler mWorkerHandler;
     private VideoFrameDrawer mVideoFrameDrawer;
     // indicate surface composing started or not
     private final AtomicBoolean mStarted = new AtomicBoolean(false);
     // indicate surface composing paused or not
     private final AtomicBoolean mPaused = new AtomicBoolean(false);
 
-    private final Runnable mWorkerRunnable = new Runnable() {
-        private void handlerCanvasError(int errorCode) {
+    private void handlerCanvasError(int errorCode) {
+        try {
+            stop();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (mOnErrorListener != null) {
+            mOnErrorListener.onError(SurfaceMediaRecorder.this, MEDIA_RECORDER_ERROR_SURFACE, errorCode);
+        }
+    }
+
+    public void drawFrame(Bitmap bitmap) {
+        if (!isRecording()) {
+            return;
+        }
+        Integer errorCode = null;
+        do {
+            Canvas canvas;
             try {
-                stop();
+                canvas = mSurface.lockCanvas(null);
             } catch (Exception e) {
+                errorCode = MEDIA_RECORDER_ERROR_CODE_LOCK_CANVAS;
                 e.printStackTrace();
+                break;
             }
-            if (mOnErrorListener != null) {
-                mOnErrorListener.onError(SurfaceMediaRecorder.this, MEDIA_RECORDER_ERROR_SURFACE, errorCode);
+            mVideoFrameDrawer.onDraw(canvas, bitmap);
+            try {
+                mSurface.unlockCanvasAndPost(canvas);
+            } catch (Exception e) {
+                errorCode = MEDIA_RECORDER_ERROR_CODE_UNLOCK_CANVAS;
+                e.printStackTrace();
+                break;
             }
+        } while (false);
+
+        if (!isRecording()) {
+            return;
         }
 
-        @Override
-        public void run() {
-            if (!isRecording()) {
-                return;
-            }
-
-            Integer errorCode = null;
-            long start = SystemClock.elapsedRealtime();
-            do {
-                Canvas canvas;
-                try {
-                    canvas = mSurface.lockCanvas(null);
-                } catch (Exception e) {
-                    errorCode = MEDIA_RECORDER_ERROR_CODE_LOCK_CANVAS;
-                    e.printStackTrace();
-                    break;
-                }
-                mVideoFrameDrawer.onDraw(canvas);
-                try {
-                    mSurface.unlockCanvasAndPost(canvas);
-                } catch (Exception e) {
-                    errorCode = MEDIA_RECORDER_ERROR_CODE_UNLOCK_CANVAS;
-                    e.printStackTrace();
-                    break;
-                }
-            } while (false);
-
-            if (!isRecording()) {
-                return;
-            }
-
-            if (errorCode != null) {
-                handlerCanvasError(errorCode);
-            } else {
-                // delay will be reset to 0 if negative in Handler:sendMessageDelayed
-                mWorkerHandler.postDelayed(this, start + mInterframeGap - SystemClock.elapsedRealtime());
-            }
+        if (errorCode != null) {
+            handlerCanvasError(errorCode);
         }
-    };
+    }
 
     @Override
     public void pause() throws IllegalStateException {
         if (isSurfaceAvailable()) {
             mPaused.set(true);
-            mWorkerHandler.removeCallbacks(mWorkerRunnable);
         }
         super.pause();
     }
@@ -149,7 +129,6 @@ public class SurfaceMediaRecorder extends MediaRecorder {
         super.resume();
         if (isSurfaceAvailable()) {
             mPaused.set(false);
-            mWorkerHandler.post(mWorkerRunnable);
         }
     }
 
@@ -165,11 +144,6 @@ public class SurfaceMediaRecorder extends MediaRecorder {
         mInputSurface = surface;
     }
 
-    @Override
-    public void setVideoFrameRate(int rate) throws IllegalStateException {
-        super.setVideoFrameRate(rate);
-        mInterframeGap = 1000 / rate + (1000 % rate == 0 ? 0 : 1);
-    }
 
     @Override
     public void setVideoSource(int video_source) throws IllegalStateException {
@@ -180,9 +154,6 @@ public class SurfaceMediaRecorder extends MediaRecorder {
     @Override
     public void start() throws IllegalStateException {
         if (isSurfaceAvailable()) {
-            if (mWorkerHandler == null) {
-                throw new IllegalStateException("worker looper is not initialized yet");
-            }
             if (mVideoFrameDrawer == null) {
                 throw new IllegalStateException("video frame drawer is not initialized yet");
             }
@@ -192,7 +163,6 @@ public class SurfaceMediaRecorder extends MediaRecorder {
         if (isSurfaceAvailable()) {
             mSurface = getSurface();
             mStarted.set(true);
-            mWorkerHandler.post(mWorkerRunnable);
         }
     }
 
@@ -204,10 +174,11 @@ public class SurfaceMediaRecorder extends MediaRecorder {
 
     /**
      * Sets video frame drawer for composing.
+     *
      * @param drawer the drawer to compose frame with {@link Canvas}
      * @throws IllegalStateException if it is called after {@link #start()}
      */
-    public void setVideoFrameDrawer(@NonNull VideoFrameDrawer drawer) throws IllegalStateException{
+    public void setVideoFrameDrawer(@NonNull VideoFrameDrawer drawer) throws IllegalStateException {
         if (isRecording()) {
             throw new IllegalStateException("setVideoFrameDrawer called in an invalid state: Recording");
         }
@@ -216,6 +187,7 @@ public class SurfaceMediaRecorder extends MediaRecorder {
 
     /**
      * Sets worker looper in which composing task executed
+     *
      * @param looper the looper for composing
      * @throws IllegalStateException if it is called after {@link #start()}
      */
@@ -223,11 +195,11 @@ public class SurfaceMediaRecorder extends MediaRecorder {
         if (isRecording()) {
             throw new IllegalStateException("setWorkerLooper called in an invalid state: Recording");
         }
-        mWorkerHandler = new Handler(looper);
     }
 
     /**
      * Returns whether Surface is editable
+     *
      * @return true if surface editable
      */
     protected boolean isSurfaceAvailable() {
@@ -241,15 +213,10 @@ public class SurfaceMediaRecorder extends MediaRecorder {
     private void localReset() {
         if (isSurfaceAvailable()) {
             mStarted.compareAndSet(true, false);
-            mPaused.compareAndSet(true,false);
-            if (mWorkerHandler != null) {
-                mWorkerHandler.removeCallbacks(mWorkerRunnable);
-            }
+            mPaused.compareAndSet(true, false);
         }
-        mInterframeGap = DEFAULT_INTERFRAME_GAP;
         mInputSurface = null;
         mOnErrorListener = null;
         mVideoFrameDrawer = null;
-        mWorkerHandler = null;
     }
 }

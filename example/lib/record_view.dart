@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:widget_recorder/screen_recorder.dart';
 
@@ -51,6 +52,8 @@ class _MyHomePageState extends State<MyHomePage> {
           Expanded(
             child: ScreenRecorder(
                 controller: controller,
+                width: 300,
+                height: 300,
                 child: Column(
                   children: [
                     const SizedBox(
@@ -82,7 +85,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 });
               },
               child: Text(_recording ? 'stop' : "start"))
-
         ],
       ),
     );

@@ -1,6 +1,7 @@
 package com.widget.recorder.duongnv.widget_recorder.recorder;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -19,28 +20,18 @@ public class ViewRecorderDemoActivity {
 
     private final Handler mMainHandler;
 
-    private final Handler mWorkerHandler;
 
     private ViewRecorder mViewRecorder;
 
     private boolean mRecording = false;
-    private final ViewRecorder.IBitmap iBitmap;
 
-    public ViewRecorderDemoActivity(Context context, ViewRecorder.IBitmap iBitmap) {
-        this.iBitmap = iBitmap;
+    public ViewRecorderDemoActivity(Context context) {
         mAppContext = context.getApplicationContext();
         mMainHandler = new Handler();
         HandlerThread ht = new HandlerThread("bg_view_recorder");
         ht.start();
-        mWorkerHandler = new Handler(ht.getLooper());
     }
 
-    private final Runnable mUpdateTextRunnable = new Runnable() {
-        @Override
-        public void run() {
-            mMainHandler.postDelayed(this, 500);
-        }
-    };
 
     private final MediaRecorder.OnErrorListener mOnErrorListener = new MediaRecorder.OnErrorListener() {
 
@@ -54,24 +45,29 @@ public class ViewRecorderDemoActivity {
 
 
     public void onPause() {
-        mMainHandler.removeCallbacks(mUpdateTextRunnable);
         if (mRecording) {
             mMainHandler.post(this::stopRecord);
         }
     }
 
     public void onResume() {
-        mMainHandler.post(mUpdateTextRunnable);
+
     }
 
     public void onDestroy() {
-        mWorkerHandler.getLooper().quit();
     }
 
 
+    public void drawFrame(Bitmap bitmap) {
+        if (mViewRecorder == null) {
+            Log.d(TAG, "drawFrame:  error mViewRecorder == null ");
+        } else {
+            mViewRecorder.drawFrame(bitmap);
+        }
+    }
 
     @Nullable
-    public String startRecord(int videoWidth, int videoHeight, int frameRate, boolean enableRecordSoundFromMic) {
+    public String startRecord(int videoWidth, int videoHeight, boolean enableRecordSoundFromMic) {
         File directory = mAppContext.getFilesDir();
         if (directory != null) {
             directory.mkdirs();
@@ -87,8 +83,7 @@ public class ViewRecorderDemoActivity {
         }
         mViewRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
         mViewRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mViewRecorder.setVideoFrameRate(frameRate); // 5fps
-        mViewRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mViewRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.DEFAULT);
         mViewRecorder.setVideoSize(videoWidth % 2 == 0 ? videoWidth : (videoWidth - 1),
                 videoHeight % 2 == 0 ? videoHeight : videoHeight - 1);
         mViewRecorder.setVideoEncodingBitRate(2000 * 1000);
@@ -96,7 +91,6 @@ public class ViewRecorderDemoActivity {
         Log.d(TAG, "startRecord: file save in   " + file);
         mViewRecorder.setOutputFile(file);
         mViewRecorder.setOnErrorListener(mOnErrorListener);
-        mViewRecorder.setRecordedView(iBitmap);
         try {
             mViewRecorder.prepare();
             mViewRecorder.start();

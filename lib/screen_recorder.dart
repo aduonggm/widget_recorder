@@ -3,20 +3,27 @@ import 'dart:ui' as ui show Image;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:widget_recorder/exporter.dart';
+import 'package:widget_recorder/frame.dart';
 import 'package:widget_recorder/widget_recorder.dart';
 
 class ScreenRecorderController {
   ScreenRecorderController({
+    Exporter? exporter,
     this.pixelRatio = 1,
-    this.frameRate = 30,
+    this.skipFramesBetweenCaptures = 2,
     SchedulerBinding? binding,
   })  : _containerKey = GlobalKey(),
-        _widgetRecorderPlugin = WidgetRecorder() {
-    _widgetRecorderPlugin.setImageCapture(capture);
-  }
+        _binding = binding ?? SchedulerBinding.instance,
+        _exporter = exporter ?? Exporter();
 
   final GlobalKey _containerKey;
-  final WidgetRecorder _widgetRecorderPlugin;
+  final SchedulerBinding _binding;
+  final Exporter _exporter;
+
+  final widgetRecorder = WidgetRecorder();
+
+  Exporter get exporter => _exporter;
 
   /// The pixelRatio describes the scale between the logical pixels and the size
   /// of the output image. Specifying 1.0 will give you a 1:1 mapping between
@@ -27,35 +34,64 @@ class ScreenRecorderController {
   /// for the underlying implementation.
   final double pixelRatio;
 
-  final int frameRate;
+  /// Describes how many frames are skipped between caputerd frames.
+  /// For example if it's `skipFramesBetweenCaptures = 2` screen_recorder
+  /// captures a frame, skips the next two frames and then captures the next
+  /// frame again.
+  final int skipFramesBetweenCaptures;
 
   int skipped = 0;
-
   bool _record = false;
 
-  void start() async {
-    // only start a video, if no recording is in progress
-    capture();
-    if (_record == true) {
-      return;
-    }
-    final context = _containerKey.currentContext;
-    if (context != null) {
-      final size = MediaQuery.sizeOf(context);
-      final success = await _widgetRecorderPlugin.startRecord(size.width.toInt(), size.height.toInt(), frameRate);
+  Future<String> start() async {
+    final image = capture();
+    final path = await widgetRecorder.startRecord(image!.width, image.height, 30);
 
+    if (_record == true) {
+      return "";
     }
     _record = true;
+    _binding.addPostFrameCallback(postFrameCallback);
+    return path ?? '';
   }
 
-  void stop() async {
-    final success = await _widgetRecorderPlugin.stopRecord();
-
+  void stop() {
+    widgetRecorder.stopRecord();
     _record = false;
+  }
+
+  void postFrameCallback(Duration timestamp) async {
+    if (_record == false) {
+      return;
+    }
+    if (skipped > 0) {
+      // count down frames which should be skipped
+      skipped = skipped - 1;
+      // add a new PostFrameCallback to know about the next frame
+      _binding.addPostFrameCallback(postFrameCallback);
+      // but we do nothing, because we skip this frame
+      return;
+    }
+    if (skipped == 0) {
+      // reset skipped frame counter
+      skipped = skipped + skipFramesBetweenCaptures;
+    }
+    try {
+      final image = capture();
+      if (image == null) {
+        print('capture returned null');
+        return;
+      }
+      await _exporter.onNewFrame(Frame(timestamp, image));
+    } catch (e) {
+      print(e.toString());
+    }
+    _binding.addPostFrameCallback(postFrameCallback);
   }
 
   ui.Image? capture() {
     final renderObject = _containerKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+
     return renderObject.toImageSync(pixelRatio: pixelRatio);
   }
 }
@@ -65,6 +101,8 @@ class ScreenRecorder extends StatelessWidget {
     Key? key,
     required this.child,
     required this.controller,
+    required this.width,
+    required this.height,
     this.background = Colors.white,
   })  : assert(background.alpha == 255, 'background color is not allowed to be transparent'),
         super(key: key);
@@ -75,7 +113,15 @@ class ScreenRecorder extends StatelessWidget {
   /// This controller starts and stops the recording.
   final ScreenRecorderController controller;
 
+  /// Width of the recording.
+  /// This should not change during recording as it could lead to
+  /// undefined behavior.
+  final double width;
 
+  /// Height of the recording
+  /// This should not change during recording as it could lead to
+  /// undefined behavior.
+  final double height;
 
   /// The background color of the recording.
   /// Transparency is currently not supported.
@@ -86,6 +132,8 @@ class ScreenRecorder extends StatelessWidget {
     return RepaintBoundary(
       key: controller._containerKey,
       child: Container(
+        width: width,
+        height: height,
         color: background,
         alignment: Alignment.center,
         child: child,

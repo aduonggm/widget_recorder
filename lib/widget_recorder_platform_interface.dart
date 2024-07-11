@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:typed_data';
 
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
@@ -32,4 +32,6 @@ abstract class WidgetRecorderPlatform extends PlatformInterface {
   Future<String?> startRecord(int videoWidth, int videoHeight, int frameRate);
 
   Future<bool> stopRecord();
+
+  Future<bool> sendFrame(Uint8List imageData, int count);
 }

@@ -3,6 +3,7 @@
 // package as the core of your plugin.
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html show window;
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
@@ -36,6 +37,12 @@ class WidgetRecorderWeb extends WidgetRecorderPlatform {
   @override
   Future<bool> stopRecord() {
     // TODO: implement stopRecord
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> sendFrame(Uint8List imageData, int count) {
+    // TODO: implement sendFrame
     throw UnimplementedError();
   }
 }
